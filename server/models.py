@@ -1,3 +1,4 @@
+# server/models.py
 from sqlalchemy.ext.hybrid import hybrid_property
 from marshmallow import Schema, fields
 
@@ -7,22 +8,25 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String)
-    _password_hash = db.Column(db.String)
+    username = db.Column(db.String, unique=True, nullable=False)
+    _password_hash = db.Column(db.String, nullable=False)
 
-    # Build method to protect password_hash property
+    # Protect password_hash from being read
     @hybrid_property
     def password_hash(self):
-        pass
+        raise AttributeError("password_hash is not a readable attribute.")
 
-    # Build method to set password hash property using bcrypt.generate_password_hash()
+    # Setter: hash and store the password
     @password_hash.setter
-    def password_hash(self, password):
-        pass
+    def password_hash(self, password: str):
+        # flask-bcrypt returns bytes -> decode to str for storage
+        self._password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
 
-    # Build authenticate method that uses bcrypt.check_password_hash()
-    def authenticate(self, password):
-        pass
+    # Authenticate: compare provided password against stored hash
+    def authenticate(self, password: str) -> bool:
+        if not self._password_hash:
+            return False
+        return bcrypt.check_password_hash(self._password_hash, password)
 
     def __repr__(self):
         return f'User {self.username}, ID: {self.id}'
